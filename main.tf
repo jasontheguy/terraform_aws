@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 resource "aws_launch_configuration" "example" {
-  image_id                    = "ami-40d28157"
+  image_id                    = "ami-0bbe6b35405ecebdb" #Ubuntu 18.04
   instance_type          = "t2.micro"
   security_groups = ["${aws_security_group.instance.id}"]
 
@@ -70,6 +70,15 @@ resource "aws_elb" "example" {
       protocol = "tcp"
       cidr_blocks = ["0.0.0.0/0"]
     }
+    #Rule to allow health checks on instances
+    egress{
+      from_port = 0
+      to_port = 0
+      protocol = "-1"
+      cidr_blocks = ["0.0.0.0/0"]
+    }
+  
+  
   }
   
 data "aws_availability_zones" "all" {}
@@ -77,6 +86,11 @@ data "aws_availability_zones" "all" {}
 resource "aws_autoscaling_group" "example"{
 launch_configuration ="${aws_launch_configuration.example.id}"
 availability_zones = ["${data.aws_availability_zones.all.names}"]
+#Register each instance in the ELB when instance boots up
+load_balancers = ["${aws_elb.example.name}"]
+#Defines HOW to check instance health and replace if needed
+health_check_type = "ELB"
+
 min_size = 2
 max_size = 10
 
@@ -86,8 +100,10 @@ tag{
   propagate_at_launch = true
 }
 
-
-
 }
+output "elb_dns_name" {
+  value = "${aws_elb.example.dns_name}"
+}
+
 
 
